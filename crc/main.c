@@ -88,6 +88,12 @@ uint16_t TABLE_CRC16 (const uint8_t* nData, int wLength) {
 
     while (wLength--) {
         nTemp = ((uint16_t)*nData++) ^ crc; // *nData increments after XOR 
+                                            // xor with the current crc gives
+                                            // us our index
+                                            // this is because we don't care 
+                                            // what the data is, we care
+                                            // how the data will affect the first
+                                            // byte of the crc
         crc >>= 8; // byte used up, shifting away
         crc ^= wCRCTable[nTemp];
     }
@@ -95,24 +101,23 @@ uint16_t TABLE_CRC16 (const uint8_t* nData, int wLength) {
 }
 
 void generate_modbus_crc_table() {
+    // think of generation as creating the accumulation of polys
+    // based on the position of high bits in the data
     uint8_t data = 0;
 
-    for (int i = 0; i < 10; i++) {
-        uint16_t pre_compute = 0;
-        uint16_t poly = 0xA001;
+    const uint16_t poly = 0xA001;
 
-        data = i;
-        for (int j = 0; j < 8; j++) {
-            uint8_t lsb_pre_shift = data & 0x0001;
+    for (uint16_t i = 0; i < 256; i++) {
+        uint16_t data = i;
+
+        for (uint8_t j = 0; j < 8; j++) {
+            uint8_t lsb_pre_shift = data & 0x0001; // extract lsb 
+
             data >>= 1;
-            poly >>= 1;
 
-            if (lsb_pre_shift != 0) {
-                pre_compute ^= poly;
-                printf("%s: poly = %x\n", __func__, poly);
-            }
+            if (lsb_pre_shift != 0) { data ^= poly; }
         }
 
-        printf("%s: index = %d, pre_compute = %x\n", __func__, i, pre_compute);
+        printf("%s: index = %d, crc = %04x\n", __func__, i, data);
     }
 }
